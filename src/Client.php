@@ -4,15 +4,15 @@
  *
  * @author Pekka Harjamäki <mcfizh@gmail.com>
  * @license MIT
- * @version 0.1.0
+ * @version 0.2.0
  */
 
-namespace libMQTT;
+namespace LibMQTT;
 
 /**
  * Client class for MQTT
  */
-class client {
+class Client {
 
 	/** @var int $timeSincePingReq		When the last PINGREQ was sent */
 	public  $timeSincePingReq;
@@ -44,8 +44,8 @@ class client {
 	/** @var string $clientID		ClientID for connection */
 	private $clientID;
 
-	/** @var string $cafile			CA file for server authentication */
-	private $cafile;
+	/** @var string $caFile			CA file for server authentication */
+	private $caFile;
 
 	/** @var string $clientCrt		Certificate file for client authentication */
 	private $clientCrt;
@@ -115,6 +115,10 @@ class client {
 	 * @return boolean Returns false if connection failed
 	 */
 	function connect($clean = true) {
+		
+		// Don't do anything, if server address is not set
+		if(!$this->serverAddress)
+			return false;
 
 		// Is encryption enabled?
 		if($this->connMethod!="tcp")
@@ -155,7 +159,7 @@ class client {
 
 		//
                 stream_set_timeout($this->socket, 10);
-                stream_set_blocking($this->socket, 0);
+                stream_set_blocking($this->socket, false);
 
 		$i = 0;
 		$buffer = "";
@@ -396,8 +400,12 @@ class client {
 	 * then closing the stream socket
 	 */
 	function close() {
+		if(!$this->socket)
+			return;
+
 		$this->sendDisconnect();
 		stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
+		$this->socket = null;
 	}
 
 	/**
@@ -422,6 +430,11 @@ class client {
 	 * @return boolean Did publish work or not
 	 */
 	function publish($topic, $message, $qos) {
+		// Do nothing, if socket isn't connected
+		if(!$this->socket)
+			return false;
+
+		// 
 		if($qos!=0 && $qos!=1)
 			return false;
 
@@ -619,6 +632,9 @@ class client {
 	 * Sends DISCONNECT packet to server
 	 */
 	private function sendDisconnect() {
+		if(!$this->socket || feof($this->socket))
+			return;
+
 		$payload = chr(0xe0).chr(0x00);
 		fwrite($this->socket, $payload, 2);
 

@@ -1,4 +1,8 @@
 language: php
+
+sudo: required
+dist: travis
+
 php:
   - '5.4'
   - '5.5'

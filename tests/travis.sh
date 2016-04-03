@@ -28,10 +28,10 @@ else
     phpunit tests/ClientTest1.php
   fi
 
-  service rabbitmq-server stop
+  sudo service rabbitmq-server stop
   cd tests
   sudo cp rabbitmq.2.config /etc/rabbitmq/rabbitmq.config
-  service rabbitmq-server start
+  sudo service rabbitmq-server start
 
   if [ "$PHPTEST" != "" ]; then
     ./phpunit-old.phar tests/ClientTest2.php

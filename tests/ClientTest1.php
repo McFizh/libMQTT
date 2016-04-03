@@ -1,11 +1,11 @@
 <?PHP
 
-class ClientTest extends PHPUnit_Framework_TestCase {
+class ClientTest1 extends PHPUnit_Framework_TestCase {
 
 	public function testUnencryptedClientCreation() {
 
 		// Try to establish connection to server
-		$client = new LibMQTT\Client("test.mosquitto.org",1883,"phpUnitClient");
+		$client = new LibMQTT\Client("localhost",1883,"phpUnitClient");
 		
 		//
 		$result = $client->connect();

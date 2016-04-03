@@ -4,7 +4,7 @@
  *
  * @author Pekka Harjamäki <mcfizh@gmail.com>
  * @license MIT
- * @version 0.2.0
+ * @version 0.2.1
  */
 
 namespace LibMQTT;
@@ -205,10 +205,10 @@ class Client {
 		*/
 
 		if($this->authUser)
-			$buffer .= $this->writeString($this->authUser,$i);
+			$buffer .= $this->convertString($this->authUser,$i);
 
 		if($this->authPass)
-			$buffer .= $this->writeString($this->authPass,$i);
+			$buffer .= $this->convertString($this->authPass,$i);
 
 		$header = chr(0x10).chr($i);
 		fwrite($this->socket, $header, 2);

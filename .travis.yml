@@ -1,16 +1,27 @@
 language: php
 
+services:
+  - rabbitmq
+
 sudo: required
-dist: travis
+dist: trusty
+group: edge
 
 php:
   - '5.4'
   - '5.5'
   - '5.6'
   - '7.0'
+  - 'hhvm'
+
+install:
+  - sudo rabbitmq-plugins enable rabbitmq_mqtt
+  - sudo rabbitmqctl add_user testuser userpass
+  - sudo ./tests/travis.sh init1
 
 before_script:
   - composer self-update && composer install
+  - ./tests/travis.sh install
 
 script:
-  - phpunit
+  - ./tests/travis.sh test

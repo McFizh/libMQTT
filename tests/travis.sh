@@ -32,6 +32,7 @@ else
   cd tests
   sudo cp rabbitmq.2.config /etc/rabbitmq/rabbitmq.config
   sudo service rabbitmq-server start
+  cd ..
 
   if [ "$PHPTEST" != "" ]; then
     ./phpunit-old.phar tests/ClientTest2.php

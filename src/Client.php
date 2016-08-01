@@ -449,7 +449,10 @@ class Client {
 		}
 
 		// Add Message to package and create header
-		$payload .= $this->convertString($message, $bytes);
+		$payload .= $message;
+
+		$bytes += strlen($message);
+
 		$header = $this->createHeader( 0x30 + ($qos<<1) , $bytes );
 
 		//

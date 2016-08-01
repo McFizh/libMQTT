@@ -4,7 +4,7 @@
  *
  * @author Pekka Harjamäki <mcfizh@gmail.com>
  * @license MIT
- * @version 0.2.1
+ * @version 0.3.0
  */
 
 namespace LibMQTT;
@@ -62,6 +62,9 @@ class Client {
 	/** @var int $keepAlive			Link keepalive time */
 	private $keepAlive;
 
+	/** @var array $msgQueue		Messages published with QoS 1 are placed here, until they are confirmed */
+	private $msgQueue;
+
 	/**
 	 * Class constructor
 	 *
@@ -79,6 +82,8 @@ class Client {
 		$this->authPass = null;
 		$this->keepAlive = 15;
 		$this->packet = 1;
+		$this->topics = [];
+		$this->msgQueue = [];
 
 		// Basic validation of clientid
 		if( preg_match("/[^0-9a-zA-Z]/",$clientID) )
@@ -336,7 +341,12 @@ class Client {
 
 				case 0x30:      // PUBLISH
 					$msg_qos = ( $cmd & 0x06 ) >> 1; // QoS = bits 1 & 2
-					$this->processMessage($payload, $msg_qos );
+					$this->processMessage( $payload, $msg_qos );
+					break;
+
+				case 0x40:	// PUBACK
+					$msg_qos = ( $cmd & 0x06 ) >> 1; // QoS = bits 1 & 2
+					$this->processPubAck( $payload, $msg_qos );
 					break;
 			}
 
@@ -372,11 +382,31 @@ class Client {
 		// Create payload starting with packet ID
 		$payload = chr($this->packet >> 8) . chr($this->packet & 0xff);
 		
+		// If for some reason topic is provided as string, convert it to array
+		// If $topics is neither array nor string, refuse to continue
+		if( !is_array($topics) && is_string($topics) )
+			$topics = [ $topics => [ 'qos' => 1 ] ];
+		else if( !is_array($topics) )
+			return false;
+
+		//
+		$numOfTopics = 0;
 		foreach($topics as $topic=>$data) {
+			// Topic data in wrong format?
+			if( !is_array($data) || !isset($data['qos']) )
+				continue;
+
+			//
 			$payload.=$this->convertString($topic, $cnt);
 			$payload.=chr($data['qos']); $cnt++;
+
 			$this->topics[$topic]=$data;
+			$numOfTopics++;
 		}
+
+		// If number of subscribed topics is 0, don't send the request
+		if($numOfTopics == 0)
+			return false;
 
 		// Send SUBSCRIBE header & payload
 		$header = chr(0x82).chr($cnt);
@@ -386,12 +416,29 @@ class Client {
 		// Wait for SUBACK packet
 		$resp_head = $this->readBytes(2, false);
 		if( strlen($resp_head) != 2 || ord($resp_head{0}) != 0x90 ) {
-			$this->debugMessage("Invalid SUBACK packet received");
+			$this->debugMessage("Invalid SUBACK packet received (stage 1)");
 			return false;
 		}
 
+		// Read remainder of the response
 		$bytes = ord($resp_head{1});
 		$resp_body = $this->readBytes($bytes, false);
+		if( strlen($resp_body) < 2 ) {
+			$this->debugMessage("Invalid SUBACK packet received (stage 2)");
+			return false;
+		}
+
+		$package_id = ( ord($resp_body{0}) << 8 ) + ord($resp_body{1});
+		if( $this->packet != $package_id )
+		{
+			$this->debugMessage("SUBACK packet received for wrong message");
+			return false;
+		}
+		
+		// FIXME: Process the rest of the SUBACK payload
+
+		// 
+		$this->packet++;
 		return true;
 	}
 
@@ -421,28 +468,36 @@ class Client {
 	}
 
 	/**
+	 * Gets queue of qos 1 messages that haven't been acknowledged by server
+	 */
+	function getMessageQueue() {
+		return $this->messageQueue;
+	}
+
+	/**
 	 * Publish message to server
 	 *
 	 * @param string $topic Topic to which message is published to
 	 * @param string $message Message to publish
 	 * @param int $qos QoS of message (0/1)
+	 * @param int $retain If set to 1 , server will try to retain the message
 	 *
 	 * @return boolean Did publish work or not
 	 */
-	function publish($topic, $message, $qos) {
+	function publish($topic, $message, $qos, $retain = 0) {
 		// Do nothing, if socket isn't connected
 		if(!$this->socket)
 			return false;
 
-		// 
-		if($qos!=0 && $qos!=1)
+		// Sanity checks for QoS and retain values
+		if( ( $qos != 0 && $qos != 1 ) || ($retain != 0 && $retain != 1 ) )
 			return false;
 
 		//
 		$bytes = 0;
 		$payload = $this->convertString($topic,$bytes);
 
-		// Add message identifier to qos 1/2 packages
+		// Add message identifier to QoS (1/2) packages
 		if($qos > 0 ) {
 			$payload .= chr($this->packet >> 8) . chr($this->packet & 0xff);
 			$bytes+=2;
@@ -450,29 +505,22 @@ class Client {
 
 		// Add Message to package and create header
 		$payload .= $this->convertString($message, $bytes);
-		$header = $this->createHeader( 0x30 + ($qos<<1) , $bytes );
+		$header = $this->createHeader( 0x30 + ($qos<<1) + $retain , $bytes );
 
 		//
 		fwrite($this->socket, $header, strlen($header));
 		fwrite($this->socket, $payload, $bytes);
 		
-		// If message qos = 1 , we should receive PUBACK
+		// If message QoS = 1 , add message to queue
 		if($qos==1) {
-			$resp_head = $this->readBytes(2, false);
-			if( strlen($resp_head) != 2 || ord($resp_head{0}) != 0x40 ) {
-				$this->debugMessage("Invalid packet received, expecting PUBACK");
-				return false;
-			}
-
-			$bytes = ord($resp_head{1});
-			$resp_body = $this->readBytes($bytes, false);
-
-			$package_id = ( ord($resp_body{0}) << 8 ) + ord($resp_body{1});
-			if( $this->packet != $package_id )
-			{
-				$this->debugMessage("PUBACK packet received for wrong message");
-				return false;
-			}
+			$this->messageQueue[ $this->packet ] = [
+				"topic" => $topic,
+				"message" => $message,
+				"qos" => $qos,
+				"retain" => $retain,
+				"time" => time(),
+				"attempt" => 1
+			];
 		}
 
 		//
@@ -481,7 +529,29 @@ class Client {
 	}
 
 	/**
-	 * Process messages sent by server
+	 * Process puback messages sent by server
+	 *
+	 * @param string $msg Message
+	 * @param int $qos QoS of message
+	 */
+	private function processPubAck ($payload, $qos) {
+
+		if( strlen($payload) < 2 ) {
+			$this->debugMessage("Malformed PUBACK package received");
+			return false;
+		}
+
+		$package_id = ( ord($payload{0}) << 8 ) + ord($payload{1});
+		if( !isset($this->messageQueue[$package_id]) ) {
+			$this->debugMessage("Received PUBACK for package we didn't sent?");
+			return false;
+		}
+
+		unset( $this->messageQueue[$package_id] );
+	}
+
+	/**
+	 * Process publish messages sent by server
 	 *
 	 * @param string $msg Message
 	 * @param int $qos QoS of message

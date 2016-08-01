@@ -11,7 +11,16 @@ class ClientTest1 extends PHPUnit_Framework_TestCase {
 		$result = $client->connect();
 		$this->assertTrue($result);
 
-		$client->publish("libmqtt/test", "testi", 0);
+		// Subscribe to 'libmqtt/test' and 'libmqtt/empty' channels
+		$result = $client->subscribe( [ 
+			"libmqtt/test" => [ "qos" => 1 ],
+			"libmqtt/empty" => [ "qos" => 0 ]
+		] );
+		$this->assertTrue($result);
+
+		//
+		$result = $client->publish("libmqtt/test", "testi", 0);
+                $this->assertTrue($result);
 
 		//
 		$client->close();
@@ -29,7 +38,16 @@ class ClientTest1 extends PHPUnit_Framework_TestCase {
 		$result = $client->connect();
 		$this->assertTrue($result);
 
-		$client->publish("libmqtt/test", "testi", 0);
+		// Subscribe to 'libmqtt/test' and 'libmqtt/empty' channels
+		$result = $client->subscribe( [ 
+			"libmqtt/test" => [ "qos" => 1 ],
+			"libmqtt/empty" => [ "qos" => 0 ]
+		] );
+		$this->assertTrue($result);
+
+		//
+		$result = $client->publish("libmqtt/test", "testi", 0);
+                $this->assertTrue($result);
 
 		//
 		$client->close();

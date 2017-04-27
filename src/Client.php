@@ -62,8 +62,8 @@ class Client {
 	/** @var int $keepAlive			Link keepalive time */
 	private $keepAlive;
 
-	/** @var array $msgQueue		Messages published with QoS 1 are placed here, until they are confirmed */
-	private $msgQueue;
+	/** @var array $messageQueue		Messages published with QoS 1 are placed here, until they are confirmed */
+	private $messageQueue;
 
 	/**
 	 * Class constructor
@@ -83,7 +83,7 @@ class Client {
 		$this->keepAlive = 15;
 		$this->packet = 1;
 		$this->topics = array();
-		$this->msgQueue = array();
+		$this->messageQueue = array();
 
 		// Basic validation of clientid
 		if( preg_match("/[^0-9a-zA-Z]/",$clientID) )
@@ -521,7 +521,7 @@ class Client {
 				"retain" => $retain,
 				"time" => time(),
 				"attempt" => 1
-            );
+			);
 		}
 
 		//

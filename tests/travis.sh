@@ -16,17 +16,18 @@ if [ "$1" == "init1" ]; then
 elif [ "$1" == "install" ]; then
 
   if [ "$PHPTEST" != "" ]; then
-    wget https://phar.phpunit.de/phpunit-old.phar
-    chmod u+x phpunit-old.phar
+    wget https://phar.phpunit.de/phpunit-4.8.phar
+    mv phpunit-4.8.phar phpunit.phar
+  else
+    wget https://phar.phpunit.de/phpunit-5.7.phar
+    mv phpunit-5.7.phar phpunit.phar
   fi
+
+  chmod u+x phpunit.phar
 
 else
 
-  if [ "$PHPTEST" != "" ]; then
-    ./phpunit-old.phar tests/ClientTest1.php
-  else
-    phpunit tests/ClientTest1.php
-  fi
+  ./phpunit.phar tests/ClientTest1.php
 
   sudo service rabbitmq-server stop
   cd tests
@@ -34,10 +35,6 @@ else
   sudo service rabbitmq-server start
   cd ..
 
-  if [ "$PHPTEST" != "" ]; then
-    ./phpunit-old.phar tests/ClientTest2.php
-  else
-    phpunit tests/ClientTest2.php
-  fi
+  ./phpunit.phar tests/ClientTest2.php
 
 fi

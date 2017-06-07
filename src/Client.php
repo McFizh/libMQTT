@@ -2,7 +2,7 @@
 /**
  * MQTT 3.1.1 library for PHP with TLS support
  *
- * @author Pekka Harjam‰ki <mcfizh@gmail.com>
+ * @author Pekka Harjam√§ki <mcfizh@gmail.com>
  * @license MIT
  * @version 0.3.0
  */
@@ -577,7 +577,7 @@ class Client {
 		$found = false;
 		foreach($this->topics as $topic=>$data) {
 
-			$t_topic = str_replace("+","[^\/]*", $topic);
+			$t_topic = str_replace("+","[^/]*", $topic);
 			$t_topic = str_replace("/","\/",$t_topic);
 			$t_topic = str_replace("$","\$",$t_topic);
 			$t_topic = str_replace("#",".*",$t_topic);

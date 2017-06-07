@@ -20,7 +20,7 @@ class ClientTest1 extends PHPUnit_Framework_TestCase {
 
 		//
 		$result = $client->publish("libmqtt/test", "testi", 0);
-                $this->assertTrue($result);
+		$this->assertTrue($result);
 
 		//
 		$client->close();
@@ -47,7 +47,7 @@ class ClientTest1 extends PHPUnit_Framework_TestCase {
 
 		//
 		$result = $client->publish("libmqtt/test", "testi", 0);
-                $this->assertTrue($result);
+ 		$this->assertTrue($result);
 
 		//
 		$client->close();

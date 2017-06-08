@@ -62,8 +62,8 @@ class Client {
 	/** @var int $keepAlive			Link keepalive time */
 	private $keepAlive;
 
-	/** @var array $msgQueue		Messages published with QoS 1 are placed here, until they are confirmed */
-	private $msgQueue;
+	/** @var array $messageQueue		Messages published with QoS 1 are placed here, until they are confirmed */
+	private $messageQueue;
 
 	/**
 	 * Class constructor
@@ -82,8 +82,8 @@ class Client {
 		$this->authPass = null;
 		$this->keepAlive = 15;
 		$this->packet = 1;
-		$this->topics = [];
-		$this->msgQueue = [];
+		$this->topics = array();
+		$this->messageQueue = array();
 
 		// Basic validation of clientid
 		if( preg_match("/[^0-9a-zA-Z]/",$clientID) )
@@ -128,7 +128,7 @@ class Client {
 		// Is encryption enabled?
 		if($this->connMethod!="tcp")
 		{
-			$socketContextOptions = [ "ssl" => [] ];
+			$socketContextOptions = array( "ssl" => array() );
 			$socketContextOptions["ssl"]["verify_peer_name"]=true;
 
 			if($this->caFile)
@@ -301,7 +301,7 @@ class Client {
 	 */
 	function setCryptoProtocol($protocol)
 	{
-		if(!in_array($protocol, ["ssl","tls","tlsv1.0","tlsv1.1","tlsv1.2","sslv3"]))
+		if(!in_array($protocol, array("ssl","tls","tlsv1.0","tlsv1.1","tlsv1.2","sslv3")))
 			return;
 		$this->connMethod = $protocol;
 	}
@@ -385,7 +385,7 @@ class Client {
 		// If for some reason topic is provided as string, convert it to array
 		// If $topics is neither array nor string, refuse to continue
 		if( !is_array($topics) && is_string($topics) )
-			$topics = [ $topics => [ 'qos' => 1 ] ];
+			$topics = array( $topics => array( 'qos' => 1 ) );
 		else if( !is_array($topics) )
 			return false;
 
@@ -514,14 +514,14 @@ class Client {
 		
 		// If message QoS = 1 , add message to queue
 		if($qos==1) {
-			$this->messageQueue[ $this->packet ] = [
+			$this->messageQueue[ $this->packet ] = array(
 				"topic" => $topic,
 				"message" => $message,
 				"qos" => $qos,
 				"retain" => $retain,
 				"time" => time(),
 				"attempt" => 1
-			];
+			);
 		}
 
 		//

@@ -8,8 +8,8 @@ Library is a rewrite of phpMQTT library, original can be found here: https://git
 ## PHP requirements
 
 Library works with:
-* PHP >= 5.3 
+* PHP >= 5.4 
 * HHVM >= 3.9
 
 * * *
-Pekka Harjamäki < mcfizh@gmail.com >
+Pekka HarjamÃ¤ki < mcfizh@gmail.com >

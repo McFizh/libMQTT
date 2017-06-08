@@ -1,6 +1,8 @@
 <?PHP
 
-class ClientTest2 extends PHPUnit_Framework_TestCase {
+use PHPUnit\Framework\TestCase;
+
+class ClientSecondTest extends TestCase {
 
 	private $message1Received = false,
 		$message2Received = false,
@@ -11,12 +13,12 @@ class ClientTest2 extends PHPUnit_Framework_TestCase {
 		// Try to establish connection to server
 		$client = new LibMQTT\Client("localhost",1883,"phpUnitClient");
 		$client->setAuthDetails("testuser", "userpass");
-		
+
 		$result = $client->connect();
 		$this->assertTrue($result);
 
 		// Subscribe to 'libmqtt/test' and 'libmqtt/empty' channels
-		$result = $client->subscribe( [ 
+		$result = $client->subscribe( [
 			"libmqtt/test" => [ "qos" => 1 , "function" => [ $this, "handleReceivedMessages" ] ],
 			"libmqtt/empty" => [ "qos" => 0 , "function" => [ $this, "handleReceivedMessages" ] ],
 			"libmqtt/wcard/+" => [ "qos" => 0 , "function" => [ $this, "handleReceivedMessages" ] ]

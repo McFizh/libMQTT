@@ -1,4 +1,4 @@
-<?PHP
+<?php
 /**
  * MQTT 3.1.1 library for PHP with TLS support
  *
@@ -8,6 +8,12 @@
  */
 
 namespace LibMQTT;
+
+use LibMQTT\Exceptions\ClientCertificateNotfound;
+use LibMQTT\Exceptions\ClientKeyNotfound;
+use LibMQTT\Exceptions\ConnectionFailed;
+use LibMQTT\Exceptions\InvalidClientId;
+use Psr\Log\LoggerInterface;
 
 /**
  * Client class for MQTT
@@ -67,23 +73,38 @@ class Client
     private $msgQueue = [];
 
     /**
+     * @var LoggerInterface Monolog logger
+     */
+    private $logger;
+
+    /**
      * Class constructor
      *
      * @param string $address Address of the broker
      * @param string $port Port on the broker
      * @param string $clientID clientID for the broker
+     * @param LoggerInterface|null $logger
+     * @throws \LibMQTT\Exceptions\InvalidClientId
      */
-    public function __construct($address, $port, $clientID)
+    public function __construct($address, $port, $clientID, LoggerInterface $logger = null)
     {
+        if ($logger === null) {
+            $this->logger = new DummyLogger();
+        }
+
         // Basic validation of clientid
         if (preg_match('/[^0-9a-zA-Z]/', $clientID)) {
-            error_log('ClientId can only contain characters 0-9,a-z,A-Z');
-            return;
+            $this->logger->error('ClientId can only contain characters 0-9,a-z,A-Z', [
+                'providedClientId' => $clientID
+            ]);
+            throw new InvalidClientId('ClientId can only contain characters 0-9,a-z,A-Z');
         }
 
         if (strlen($clientID) > 23) {
-            error_log('ClientId max length is 23 characters/numbers');
-            return;
+            $this->logger->error('ClientId max length is 23 characters/numbers', [
+                'providedClientId' => $clientID
+            ]);
+            throw new InvalidClientId('ClientId max length is 23 characters/numbers');
         }
 
         $this->serverAddress = $address;
@@ -107,6 +128,7 @@ class Client
      * @param boolean $clean Is this connection clean?
      *
      * @return boolean Returns false if connection failed
+     * @throws \LibMQTT\Exceptions\ConnectionFailed
      */
     public function connect($clean = true)
     {
@@ -138,20 +160,17 @@ class Client
 
             $this->socket = stream_socket_client(
                 $host, $errno, $errstr, 60, STREAM_CLIENT_CONNECT, $socketContext);
-
-            $this->debugMessage('Connecting to: ' . $host);
         } else {
             $host = $this->connMethod . '://' . $this->serverAddress . ':' . $this->serverPort;
             $this->socket = stream_socket_client(
                 $host, $errno, $errstr, 60, STREAM_CLIENT_CONNECT);
-            $this->debugMessage('Connecting to: ' . $host);
         }
+        $this->logger->debug('Connecting', ['host' => $host]);
 
-        //
         if (!$this->socket) {
             $this->socket = null;
-            $this->debugMessage("Connection failed.. $errno , $errstr");
-            return false;
+            $this->logger->error('Connection failed', ['errorNumber' => $errno, 'errorMessage' => $errstr]);
+            throw new ConnectionFailed('Failed to connect');
         }
 
         //
@@ -222,17 +241,17 @@ class Client
         // Wait for CONNACK packet
         $string = $this->readBytes(4, false);
         if (strlen($string) !== 4) {
-            $this->debugMessage('Connection failed! Server gave unexpected response.');
-            return false;
+            $this->logger->error('Connection failed! Server gave unexpected response.');
+            throw new ConnectionFailed('Connection failed! Server gave unexpected response.');
         }
 
         if (ord($string{0}) === 0x20 && $string{3} === chr(0)) {
-            $this->debugMessage('Connected to MQTT');
+            $this->logger->info('Connected to broker');
         } else {
             $msg = sprintf('Connection failed! Error: 0x%02x 0x%02x',
                 ord($string{0}), ord($string{3}));
-            $this->debugMessage($msg);
-            return false;
+            $this->logger->error($msg);
+            throw new ConnectionFailed($msg);
         }
 
         $this->timeSincePingReq = time();
@@ -247,17 +266,19 @@ class Client
      *
      * @param string $crtFile Client certificate file
      * @param string $keyFile Client key file
+     * @throws \LibMQTT\Exceptions\ClientCertificateNotfound
+     * @throws \LibMQTT\Exceptions\ClientKeyNotfound
      */
     public function setClientCert($crtFile, $keyFile)
     {
         if (!file_exists($crtFile)) {
-            $this->debugMessage('Client certificate not found');
-            return;
+            $this->logger->error('Client certificate not found');
+            throw new ClientCertificateNotFound('Client certificate not found');
         }
 
         if (!file_exists($keyFile)) {
-            $this->debugMessage('Client key not found');
-            return;
+            $this->logger->error('Client key not found');
+            throw new ClientKeyNotFound('Client key not found');
         }
 
         $this->clientCrt = $crtFile;
@@ -311,7 +332,6 @@ class Client
      */
     public function eventLoop()
     {
-
         // Socket not connected at all?
         if ($this->socket === null) {
             return;

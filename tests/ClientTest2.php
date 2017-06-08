@@ -36,10 +36,10 @@ class ClientTest2 extends PHPUnit_Framework_TestCase {
 		$result = $client->publish("libmqtt/wcard/test", "test message 3", 0);
 		$this->assertTrue($result);
 
-		// Wait 5 x 20ms for server to send us the previous messages
-		for($l1=0; $l1<5; $l1++)
+		// Wait 7 x 40ms for server to send us the previous messages
+		for($l1=0; $l1<7; $l1++)
 		{
-			usleep(20000);
+			usleep(40000);
 			$client->eventloop();
 		}
 

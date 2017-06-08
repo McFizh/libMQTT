@@ -587,6 +587,8 @@ class Client {
 
 			$found = true;
 
+			$this->debugMessage("Packet received (QoS: ".$qos." ; topic: ".$msg_topic." ; msg: ".$msg.")",2);
+
 			// Is callback for this topic set?
 			if(isset($data["function"]) && is_callable($data["function"]))
 			{
@@ -608,6 +610,7 @@ class Client {
 		// QoS 2 package requires PUBRECT packet, but we won't give it :)
 		if($qos==2) {
 			// FIXME
+			$this->debugMessage("Packet with QoS 2 received, but feature is not implemented");
 		}
 	}
 
@@ -615,9 +618,10 @@ class Client {
 	 * Handles debug messages
 	 *
 	 * @param string $msg Message
+	 * @param int $level Logging level
 	 */
-	private function debugMessage($msg) {
-		if(!$this->debug)
+	private function debugMessage($msg, $level=1) {
+		if(!$this->debug || $this->debug < $level)
 			return;
 
 		echo "libmqtt: ".$msg."\n";

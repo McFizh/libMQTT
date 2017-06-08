@@ -56,8 +56,9 @@ class ClientTest2 extends PHPUnit_Framework_TestCase {
 	}
 
 	public function handleReceivedMessages($topic, $msg, $qos) {
-		if($topic != "libmqtt/test")
+		if( !in_array($topic, array("libmqtt/test","libmqtt/wcard/test") ) )
 			return;
+
 		if($msg == "test message 1" && $qos==0)
 			$this->message1Received = true;
 		if($msg == "test message 2" && $qos==1)

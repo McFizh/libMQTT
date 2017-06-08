@@ -4,7 +4,7 @@ set -e
 PHPTEST=`php -v | grep -E "(5\.4\.|5\.5\.)" && true || true`
 
 if [ "$1" == "init1" ]; then
-  
+
  service rabbitmq-server stop
 
  cd tests
@@ -27,7 +27,7 @@ elif [ "$1" == "install" ]; then
 
 else
 
-  ./phpunit.phar tests/ClientTest1.php
+  ./phpunit.phar tests/ClientFirstTest.php
 
   sudo service rabbitmq-server stop
   cd tests
@@ -35,6 +35,6 @@ else
   sudo service rabbitmq-server start
   cd ..
 
-  ./phpunit.phar tests/ClientTest2.php
+  ./phpunit.phar tests/ClientSecondTest.php
 
 fi

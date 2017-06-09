@@ -9,10 +9,14 @@
 
 namespace LibMQTT;
 
+use LibMQTT\Exceptions\CAFileNotFound;
 use LibMQTT\Exceptions\ClientCertificateNotfound;
 use LibMQTT\Exceptions\ClientKeyNotfound;
 use LibMQTT\Exceptions\ConnectionFailed;
 use LibMQTT\Exceptions\InvalidClientId;
+use LibMQTT\Exceptions\InvalidProtocol;
+use LibMQTT\Exceptions\MalformedPackageReceived;
+use LibMQTT\Exceptions\NotImplementedYet;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -20,56 +24,84 @@ use Psr\Log\LoggerInterface;
  */
 class Client
 {
-
-    /** @var int $timeSincePingReq When the last PINGREQ was sent */
+    /**
+     * @var int $timeSincePingReq When the last PINGREQ was sent
+     */
     public $timeSincePingReq;
 
-    /** @var int $timeSincePingResp When the last PINGRESP was received */
+    /**
+     * @var int $timeSincePingResp When the last PINGRESP was received
+     */
     public $timeSincePingResp;
 
-    /** @var boolean $debug Debug messages enabled? */
-    private $debug;
-
-    /** @var int $packet ID of the next free packet */
+    /**
+     * @var int $packet ID of the next free packet
+     */
     private $packet = 1;
 
-    /** @var array $topics Array of topics we're subscribed to */
+    /**
+     * @var array $topics Array of topics we're subscribed to
+     */
     private $topics = [];
 
-    /** @var string $connMethod Method used for connection */
+    /**
+     * @var string $connMethod Method used for connection
+     */
     private $connMethod = 'tcp';
 
-    /** @var resource $socket Socket .. well.. socket */
+    /**
+     * @var resource $socket Socket .. well.. socket
+     */
     private $socket;
 
-    /** @var string $serverAddress Hostname of the server */
+    /**
+     * @var string $serverAddress Hostname of the server
+     */
     private $serverAddress;
 
-    /** @var string $serverPort Port on the server */
+    /**
+     * @var string $serverPort Port on the server
+     */
     private $serverPort;
 
-    /** @var string $clientID ClientID for connection */
+    /**
+     * @var string $clientID ClientID for connection
+     */
     private $clientID;
 
-    /** @var string $caFile CA file for server authentication */
+    /**
+     * @var string $caFile CA file for server authentication
+     */
     private $caFile;
 
-    /** @var string $clientCrt Certificate file for client authentication */
+    /**
+     * @var string $clientCrt Certificate file for client authentication
+     */
     private $clientCrt;
 
-    /** @var string $clientKey Key file for client authentication */
+    /**
+     * @var string $clientKey Key file for client authentication
+     */
     private $clientKey;
 
-    /** @var string $authUser Username for authentication */
+    /**
+     * @var string $authUser Username for authentication
+     */
     private $authUser;
 
-    /** @var string $authPass Password for authentication */
+    /**
+     * @var string $authPass Password for authentication
+     */
     private $authPass;
 
-    /** @var int $keepAlive Link keepalive time */
+    /**
+     * @var int $keepAlive Link keepalive time
+     */
     private $keepAlive = 15;
 
-    /** @var array $msgQueue Messages published with QoS 1 are placed here, until they are confirmed */
+    /**
+     * @var array $msgQueue Messages published with QoS 1 are placed here, until they are confirmed
+     */
     private $msgQueue = [];
 
     /**
@@ -289,12 +321,13 @@ class Client
      * Sets CAfile which is used to identify server
      *
      * @param string $caFile Client certificate file
+     * @throws \LibMQTT\Exceptions\CAFileNotFound
      */
     public function setCAFile($caFile)
     {
         if (!file_exists($caFile)) {
-            $this->debugMessage('CA file not found');
-            return;
+            $this->logger->debug('CA file not found');
+            throw new CAFileNotFound('CA file not found');
         }
 
         $this->caFile = $caFile;
@@ -318,11 +351,13 @@ class Client
      * See this page for more info on values: http://php.net/manual/en/migration56.openssl.php
      *
      * @param string $protocol Set encryption protocol
+     * @throws \LibMQTT\Exceptions\InvalidProtocol
      */
     public function setCryptoProtocol($protocol)
     {
-        if (!in_array($protocol, ['ssl', 'tls', 'tlsv1.0', 'tlsv1.1', 'tlsv1.2', 'sslv3'])) {
-            return;
+        $validProtocols = ['ssl', 'tls', 'tlsv1.0', 'tlsv1.1', 'tlsv1.2', 'sslv3'];
+        if (!in_array($protocol, $validProtocols, true)) {
+            throw new InvalidProtocol('Protocol must be one of '.implode(',', $validProtocols));
         }
         $this->connMethod = $protocol;
     }
@@ -357,7 +392,7 @@ class Client
 
             switch ($cmd & 0xf0) {
                 case 0xd0:      // PINGRESP
-                    $this->debugMessage('Ping response received');
+                    $this->logger->debug('Ping response received');
                     break;
 
                 case 0x30:      // PUBLISH
@@ -376,13 +411,13 @@ class Client
         }
 
         if ($this->timeSincePingReq < (time() - $this->keepAlive)) {
-            $this->debugMessage('Nothing received for a while, pinging..');
+            $this->logger->debug('Nothing received for a while, pinging..');
             $this->sendPing();
         }
 
 
         if ($this->timeSincePingResp < (time() - ($this->keepAlive * 2))) {
-            $this->debugMessage('Not seen a package in a while, reconnecting..');
+            $this->logger->debug('Not seen a package in a while, reconnecting..');
             stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
             $this->socket = null;
         }
@@ -398,7 +433,6 @@ class Client
      */
     public function subscribe($topics)
     {
-
         $cnt = 2;
 
         // Create payload starting with packet ID
@@ -443,8 +477,8 @@ class Client
 
         // Wait for SUBACK packet
         $resp_head = $this->readBytes(2, false);
-        if (strlen($resp_head) != 2 || ord($resp_head{0}) != 0x90) {
-            $this->debugMessage('Invalid SUBACK packet received (stage 1)');
+        if (strlen($resp_head) !== 2 || ord($resp_head{0}) !== 0x90) {
+            $this->logger->debug('Invalid SUBACK packet received (stage 1)');
             return false;
         }
 
@@ -452,13 +486,13 @@ class Client
         $bytes = ord($resp_head{1});
         $resp_body = $this->readBytes($bytes, false);
         if (strlen($resp_body) < 2) {
-            $this->debugMessage('Invalid SUBACK packet received (stage 2)');
+            $this->logger->debug('Invalid SUBACK packet received (stage 2)');
             return false;
         }
 
         $package_id = (ord($resp_body{0}) << 8) + ord($resp_body{1});
         if ($this->packet !== $package_id) {
-            $this->debugMessage('SUBACK packet received for wrong message');
+            $this->logger->debug('SUBACK packet received for wrong message');
             return false;
         }
 
@@ -482,18 +516,6 @@ class Client
         $this->sendDisconnect();
         stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
         $this->socket = null;
-    }
-
-    /**
-     * Sets verbosity level of messages
-     *
-     * @param int $level Verbosity level (0: silent , 1: verbose, 2: debug)
-     */
-    public function setVerbose($level)
-    {
-        if ($level === 1 || $level === 2) {
-            $this->debug = true;
-        }
     }
 
     /**
@@ -568,19 +590,20 @@ class Client
      * @param string $payload Message
      * @param int $qos QoS of message
      * @return bool
+     * @throws \LibMQTT\Exceptions\MalformedPackageReceived
      */
     private function processPubAck($payload, $qos)
     {
 
         if (strlen($payload) < 2) {
-            $this->debugMessage('Malformed PUBACK package received');
-            return false;
+            $this->logger->debug('Malformed PUBACK package received');
+            throw new MalformedPackageReceived('Malformed PUBACK package received');
         }
 
         $package_id = (ord($payload{0}) << 8) + ord($payload{1});
         if (!isset($this->msgQueue[$package_id])) {
-            $this->debugMessage("Received PUBACK for package we didn't sent?");
-            return false;
+            $this->logger->debug('Received PUBACK for package we didn\'t sent?');
+            throw new MalformedPackageReceived('Received PUBACK for package we didn\'t sent?');
         }
 
         unset($this->msgQueue[$package_id]);
@@ -592,10 +615,10 @@ class Client
      *
      * @param string $msg Message
      * @param int $qos QoS of message
+     * @throws \LibMQTT\Exceptions\NotImplementedYet
      */
     private function processMessage($msg, $qos)
     {
-
         // Package starts with topic
         $tlen = (ord($msg{0}) << 8) + ord($msg{1});
         $msg_topic = substr($msg, 2, $tlen);
@@ -624,8 +647,7 @@ class Client
 
             $found = true;
 
-            $this->debugMessage('Packet received (QoS: ' . $qos . ' ; topic: ' . $msg_topic . ' ; msg: ' . $msg . ')',
-                2);
+            $this->logger->debug('Packet received', ['QoS' => $qos, 'topic' => $msg_topic, 'msg' => $msg]);
 
             // Is callback for this topic set?
             if (isset($data['function']) && is_callable($data['function'])) {
@@ -635,12 +657,12 @@ class Client
 
         //
         if (!$found) {
-            $this->debugMessage("Package received, but it doesn't match subscriptions");
+            $this->logger->debug('Package received, but it doesn\'t match subscriptions');
         }
 
         // QoS 1 package requires PUBACK packet
         if ($qos == 1) {
-            $this->debugMessage('Packet with QoS 1 received, sending PUBACK');
+            $this->logger->debug('Packet with QoS 1 received, sending PUBACK');
             $payload = chr(0x40) . chr(0x02) . $msg_id;
             fwrite($this->socket, $payload, 4);
         }
@@ -648,23 +670,9 @@ class Client
         // QoS 2 package requires PUBRECT packet, but we won't give it :)
         if ($qos == 2) {
             // FIXME
-            $this->debugMessage('Packet with QoS 2 received, but feature is not implemented');
+            $this->logger->error('Packet with QoS 2 received, but feature is not implemented');
+            throw new NotImplementedYet('Packet with QoS 2 received, but feature is not implemented');
         }
-    }
-
-    /**
-     * Handles debug messages
-     *
-     * @param string $msg Message
-     * @param int $level Logging level
-     */
-    private function debugMessage($msg, $level = 1)
-    {
-        if (!$this->debug || $this->debug < $level) {
-            return;
-        }
-
-        echo 'libmqtt: ' . $msg . "\n";
     }
 
     /**
@@ -677,7 +685,7 @@ class Client
      */
     private function createHeader($cmd, $bytes)
     {
-        $retval = chr($cmd);
+        $returnValue = chr($cmd);
 
         $bytes_left = $bytes;
         do {
@@ -686,14 +694,13 @@ class Client
             $bytes_left >>= 7;
 
             if ($bytes_left > 0) {
-                $byte = $byte | 0x80;
+                $byte |= 0x80;
             }
 
-            $retval .= chr($byte);
-
+            $returnValue .= chr($byte);
         } while ($bytes_left > 0);
 
-        return $retval;
+        return $returnValue;
     }
 
     /**
@@ -708,8 +715,7 @@ class Client
     {
         $len = strlen($data);
         $cnt += $len + 2;
-        $retval = chr($len >> 8) . chr($len & 0xff) . $data;
-        return $retval;
+        return chr($len >> 8) . chr($len & 0xff) . $data;
     }
 
     /**
@@ -717,6 +723,7 @@ class Client
      *
      * @param int $bytes Number of bytes to read
      * @param boolean $noBuffer If true, use only direct fread
+     * @return string
      */
     private function readBytes($bytes, $noBuffer)
     {
@@ -726,14 +733,14 @@ class Client
 
 
         $bytes_left = $bytes;
-        $retval = '';
+        $returnValue = '';
         while (!feof($this->socket) && $bytes_left > 0) {
             $res = fread($this->socket, $bytes_left);
-            $retval .= $res;
+            $returnValue .= $res;
             $bytes_left -= strlen($res);
         }
 
-        return $retval;
+        return $returnValue;
     }
 
     /**
@@ -745,7 +752,7 @@ class Client
         $payload = chr(0xc0) . chr(0x00);
         fwrite($this->socket, $payload, 2);
 
-        $this->debugMessage('PING sent');
+        $this->logger->info('PING sent');
     }
 
     /**
@@ -760,7 +767,6 @@ class Client
         $payload = chr(0xe0) . chr(0x00);
         fwrite($this->socket, $payload, 2);
 
-        $this->debugMessage('DISCONNECT sent');
+        $this->logger->info('DISCONNECT sent');
     }
-
 }

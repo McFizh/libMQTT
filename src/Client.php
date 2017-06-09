@@ -17,6 +17,7 @@ use LibMQTT\Exceptions\InvalidClientId;
 use LibMQTT\Exceptions\InvalidProtocol;
 use LibMQTT\Exceptions\MalformedPackageReceived;
 use LibMQTT\Exceptions\NotImplementedYet;
+use LibMQTT\Exceptions\SocketDisconnected;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -25,14 +26,14 @@ use Psr\Log\LoggerInterface;
 class Client
 {
     /**
-     * @var int $timeSincePingReq When the last PINGREQ was sent
+     * @var int $timeSincePingRequest When the last PINGREQ was sent
      */
-    public $timeSincePingReq;
+    public $timeSincePingRequest;
 
     /**
-     * @var int $timeSincePingResp When the last PINGRESP was received
+     * @var int $timeSincePingResponse When the last PINGRESP was received
      */
-    public $timeSincePingResp;
+    public $timeSincePingResponse;
 
     /**
      * @var int $packet ID of the next free packet
@@ -122,6 +123,8 @@ class Client
     {
         if ($logger === null) {
             $this->logger = new DummyLogger();
+        } else {
+            $this->logger = $logger;
         }
 
         // Basic validation of clientid
@@ -164,7 +167,6 @@ class Client
      */
     public function connect($clean = true)
     {
-
         // Don't do anything, if server address is not set
         if (!$this->serverAddress) {
             return false;
@@ -286,8 +288,8 @@ class Client
             throw new ConnectionFailed($msg);
         }
 
-        $this->timeSincePingReq = time();
-        $this->timeSincePingResp = time();
+        $this->timeSincePingRequest = time();
+        $this->timeSincePingResponse = time();
 
         return true;
     }
@@ -364,19 +366,22 @@ class Client
 
     /**
      * Loop to process data packets
+     * @throws \LibMQTT\Exceptions\MalformedPackageReceived
+     * @throws \LibMQTT\Exceptions\NotImplementedYet
+     * @throws \LibMQTT\Exceptions\SocketDisconnected
      */
     public function eventLoop()
     {
         // Socket not connected at all?
         if ($this->socket === null) {
-            return;
+            throw new SocketDisconnected('Socket is not connected');
         }
 
         // Server closed connection?
         if (feof($this->socket)) {
             stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
             $this->socket = null;
-            return;
+            $this->logger->warning('Server closed connection');
         }
 
         //
@@ -391,37 +396,47 @@ class Client
             }
 
             switch ($cmd & 0xf0) {
-                case 0xd0:      // PINGRESP
-                    $this->logger->debug('Ping response received');
+                case 0xd0: // PINGRESP
+                    $this->logger->debug('Ping response received, resuming wait');
                     break;
 
-                case 0x30:      // PUBLISH
+                case 0x30: // PUBLISH
                     $msg_qos = ($cmd & 0x06) >> 1; // QoS = bits 1 & 2
                     $this->processMessage($payload, $msg_qos);
                     break;
 
-                case 0x40:    // PUBACK
+                case 0x40: // PUBACK
                     $msg_qos = ($cmd & 0x06) >> 1; // QoS = bits 1 & 2
                     $this->processPubAck($payload, $msg_qos);
                     break;
+                default:
+                    $this->logger->notice('Received unknown command', ['cmd' => $cmd]);
+                    break;
             }
 
-            $this->timeSincePingReq = time();
-            $this->timeSincePingResp = time();
+            $this->timeSincePingRequest = time();
+            $this->timeSincePingResponse = time();
         }
 
-        if ($this->timeSincePingReq < (time() - $this->keepAlive)) {
-            $this->logger->debug('Nothing received for a while, pinging..');
+        if ($this->timeSincePingRequest < (time() - $this->keepAlive)) {
+            $this->logger->debug('Nothing received for a while, pinging...', [
+                'timeSincePingRequest' => date('r', $this->timeSincePingRequest),
+                'timeSincePingResponse' => date('r', $this->timeSincePingResponse),
+                'keepAlive' => $this->keepAlive,
+            ]);
             $this->sendPing();
         }
 
 
-        if ($this->timeSincePingResp < (time() - ($this->keepAlive * 2))) {
-            $this->logger->debug('Not seen a package in a while, reconnecting..');
+        if ($this->timeSincePingResponse < (time() - ($this->keepAlive * 2))) {
             stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
             $this->socket = null;
+            $this->logger->debug('Not seen a package in a while, reconnecting...', [
+                'timeSincePingRequest' => date('r', $this->timeSincePingRequest),
+                'timeSincePingResponse' => date('r', $this->timeSincePingResponse),
+                'keepAlive' => $this->keepAlive,
+            ]);
         }
-
     }
 
     /**
@@ -594,7 +609,6 @@ class Client
      */
     private function processPubAck($payload, $qos)
     {
-
         if (strlen($payload) < 2) {
             $this->logger->debug('Malformed PUBACK package received');
             throw new MalformedPackageReceived('Malformed PUBACK package received');
@@ -748,7 +762,7 @@ class Client
      */
     private function sendPing()
     {
-        $this->timeSincePingReq = time();
+        $this->timeSincePingRequest = time();
         $payload = chr(0xc0) . chr(0x00);
         fwrite($this->socket, $payload, 2);
 

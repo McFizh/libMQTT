@@ -1,5 +1,13 @@
 <?php
 
+/*
+ * Generates random data for us to read out
+ *
+ * Run with watch if you want to keep this running forever:
+ *
+ * cd /vagrant/examples/vagrant; watch -n 1 php publishBroker.php
+ */
+
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 

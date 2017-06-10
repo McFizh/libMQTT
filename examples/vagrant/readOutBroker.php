@@ -13,7 +13,7 @@ try {
     $client = new Client('192.168.33.11', 1883, 'readClientID', $logger);
     $client->connect();
     $client->subscribe([
-        'temperatures/#' =>  ['qos' => 1, 'function' => 'handleReceivedMessages'],
+        'temperatures/#' =>  ['qos' => 0, 'function' => 'handleReceivedMessages'],
     ]);
 } catch (\Exception $e) {
     printf('Captured exception: '.$e->getMessage().PHP_EOL);
@@ -24,7 +24,7 @@ try {
 $read = true;
 while ($read === true) {
     $client->eventLoop();
-    usleep(100000);
+    usleep(10000);
 }
 
 // Close the connection.

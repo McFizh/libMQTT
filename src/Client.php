@@ -17,7 +17,7 @@ use LibMQTT\Exceptions\InvalidClientId;
 use LibMQTT\Exceptions\InvalidProtocol;
 use LibMQTT\Exceptions\MalformedPackageReceived;
 use LibMQTT\Exceptions\NotImplementedYet;
-use LibMQTT\Exceptions\SocketDisconnected;
+use LibMQTT\Exceptions\ServerClosedConnection;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -31,9 +31,10 @@ class Client
     public $timeSincePingRequest;
 
     /**
-     * @var int $timeSincePingResponse When the last PINGRESP was received
+     * @var int $timeSinceKeepAliveResponse When the last Control Packet was received
+     * @see http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Toc398718027
      */
-    public $timeSincePingResponse;
+    public $timeSinceKeepAliveResponse;
 
     /**
      * @var int $packet ID of the next free packet
@@ -98,7 +99,7 @@ class Client
     /**
      * @var int $keepAlive Link keepalive time
      */
-    private $keepAlive = 15;
+    private $keepAlive = 60;
 
     /**
      * @var array $msgQueue Messages published with QoS 1 are placed here, until they are confirmed
@@ -122,10 +123,9 @@ class Client
     public function __construct($address, $port, $clientID, LoggerInterface $logger = null)
     {
         if ($logger === null) {
-            $this->logger = new DummyLogger();
-        } else {
-            $this->logger = $logger;
+            $logger = new DummyLogger();
         }
+        $this->logger = $logger;
 
         // Basic validation of clientid
         if (preg_match('/[^0-9a-zA-Z]/', $clientID)) {
@@ -289,7 +289,7 @@ class Client
         }
 
         $this->timeSincePingRequest = time();
-        $this->timeSincePingResponse = time();
+        $this->setLastControlPacketTime();
 
         return true;
     }
@@ -365,23 +365,48 @@ class Client
     }
 
     /**
+     * The actual value of the Keep Alive is application specific; typically this is a few minutes. The maximum value is
+     * 18 hours 12 minutes and 15 seconds.
+     *
+     * @see http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Toc398718030
+     *
+     * @param int $keepAlive
+     * @return Client
+     * @throws \InvalidArgumentException
+     */
+    public function setKeepAlive($keepAlive)
+    {
+        if (!is_int($keepAlive) || $this->keepAlive < 0 || $this->keepAlive > (15 + (12 * 60) + (18 * 60 * 60))) {
+            throw new \InvalidArgumentException('Invalid keepAlive argument');
+        }
+
+        $this->keepAlive = $keepAlive;
+        return $this;
+    }
+
+    /**
      * Loop to process data packets
      * @throws \LibMQTT\Exceptions\MalformedPackageReceived
      * @throws \LibMQTT\Exceptions\NotImplementedYet
-     * @throws \LibMQTT\Exceptions\SocketDisconnected
+     * @throws \LibMQTT\Exceptions\ConnectionFailed
+     * @throws \LibMQTT\Exceptions\ServerClosedConnection
      */
     public function eventLoop()
     {
-        // Socket not connected at all?
-        if ($this->socket === null) {
-            throw new SocketDisconnected('Socket is not connected');
-        }
+        // First things first: check if we need to send out a PINGREQ
+        $this->checkPing();
 
         // Server closed connection?
         if (feof($this->socket)) {
             stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
             $this->socket = null;
-            $this->logger->warning('Server closed connection');
+            $this->logger->warning('Server closed connection', [
+                'timeSincePingRequest' => date('r', $this->timeSincePingRequest),
+                'timeSincePingResponse' => date('r', $this->timeSinceKeepAliveResponse),
+                'keepAlive' => $this->keepAlive,
+            ]);
+
+            throw new ServerClosedConnection('Server closed connection');
         }
 
         //
@@ -397,14 +422,16 @@ class Client
 
             switch ($cmd & 0xf0) {
                 case 0xd0: // PINGRESP
-                    $this->logger->debug('Ping response received, resuming wait');
+                    $this->timeSinceKeepAliveResponse = time();
+                    $this->logger->debug('Ping response received, resuming wait', [
+                        'timeSincePingResponse' => date('r', $this->timeSinceKeepAliveResponse),
+                    ]);
                     break;
-
                 case 0x30: // PUBLISH
+                    $this->setLastControlPacketTime();
                     $msg_qos = ($cmd & 0x06) >> 1; // QoS = bits 1 & 2
                     $this->processMessage($payload, $msg_qos);
                     break;
-
                 case 0x40: // PUBACK
                     $msg_qos = ($cmd & 0x06) >> 1; // QoS = bits 1 & 2
                     $this->processPubAck($payload, $msg_qos);
@@ -413,29 +440,20 @@ class Client
                     $this->logger->notice('Received unknown command', ['cmd' => $cmd]);
                     break;
             }
-
-            $this->timeSincePingRequest = time();
-            $this->timeSincePingResponse = time();
         }
 
-        if ($this->timeSincePingRequest < (time() - $this->keepAlive)) {
-            $this->logger->debug('Nothing received for a while, pinging...', [
-                'timeSincePingRequest' => date('r', $this->timeSincePingRequest),
-                'timeSincePingResponse' => date('r', $this->timeSincePingResponse),
-                'keepAlive' => $this->keepAlive,
-            ]);
-            $this->sendPing();
-        }
-
-
-        if ($this->timeSincePingResponse < (time() - ($this->keepAlive * 2))) {
+        // We MUST disconnect if no ping response has been received at 1.5 times the last keepAlive time
+        if ($this->keepAlive !== 0 && $this->timeSinceKeepAliveResponse < (time() - ($this->keepAlive * 1.5))) {
             stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
             $this->socket = null;
-            $this->logger->debug('Not seen a package in a while, reconnecting...', [
+            $this->logger->debug('Not seen a package in a while, disconnecting...', [
                 'timeSincePingRequest' => date('r', $this->timeSincePingRequest),
-                'timeSincePingResponse' => date('r', $this->timeSincePingResponse),
+                'timeSincePingResponse' => date('r', $this->timeSinceKeepAliveResponse),
                 'keepAlive' => $this->keepAlive,
+                'calculation' => date('r', time() - ($this->keepAlive * 2)),
             ]);
+
+            throw new ConnectionFailed('Disconnecting because we didn\'t get a ping response back in time');
         }
     }
 
@@ -445,6 +463,7 @@ class Client
      * @param array $topics Topics to subscribe to
      *
      * @return boolean Did subscribe work or not?
+     * @throws \InvalidArgumentException
      */
     public function subscribe($topics)
     {
@@ -457,13 +476,12 @@ class Client
         // If $topics is neither array nor string, refuse to continue
         if (!is_array($topics) && is_string($topics)) {
             $topics = [$topics => ['qos' => 1]];
-        } else {
-            if (!is_array($topics)) {
-                return false;
-            }
         }
 
-        //
+        if (!is_array($topics)) {
+            throw new \InvalidArgumentException('Topics must be an array or a string');
+        }
+
         $numOfTopics = 0;
         foreach ($topics as $topic => $data) {
             // Topic data in wrong format?
@@ -489,6 +507,7 @@ class Client
         $header = chr(0x82) . chr($cnt);
         fwrite($this->socket, $header, 2);
         fwrite($this->socket, $payload, $cnt);
+        $this->setLastControlPacketTime();
 
         // Wait for SUBACK packet
         $resp_head = $this->readBytes(2, false);
@@ -513,7 +532,6 @@ class Client
 
         // FIXME: Process the rest of the SUBACK payload
 
-        //
         $this->packet++;
         return true;
     }
@@ -578,9 +596,9 @@ class Client
         $bytes += strlen($message);
         $header = $this->createHeader(0x30 + ($qos << 1) + $retain, $bytes);
 
-        //
         fwrite($this->socket, $header, strlen($header));
         fwrite($this->socket, $payload, $bytes);
+        $this->setLastControlPacketTime();
 
         // If message QoS = 1 , add message to queue
         if ($qos == 1) {
@@ -594,7 +612,6 @@ class Client
             ];
         }
 
-        //
         $this->packet++;
         return true;
     }
@@ -621,6 +638,7 @@ class Client
         }
 
         unset($this->msgQueue[$package_id]);
+        $this->setLastControlPacketTime();
         return true;
     }
 
@@ -675,14 +693,14 @@ class Client
         }
 
         // QoS 1 package requires PUBACK packet
-        if ($qos == 1) {
+        if ($qos === 1) {
             $this->logger->debug('Packet with QoS 1 received, sending PUBACK');
             $payload = chr(0x40) . chr(0x02) . $msg_id;
             fwrite($this->socket, $payload, 4);
         }
 
         // QoS 2 package requires PUBRECT packet, but we won't give it :)
-        if ($qos == 2) {
+        if ($qos === 2) {
             // FIXME
             $this->logger->error('Packet with QoS 2 received, but feature is not implemented');
             throw new NotImplementedYet('Packet with QoS 2 received, but feature is not implemented');
@@ -759,14 +777,64 @@ class Client
 
     /**
      * Sends PINGREQ packet to server
+     *
+     * @return bool
      */
     private function sendPing()
     {
-        $this->timeSincePingRequest = time();
         $payload = chr(0xc0) . chr(0x00);
         fwrite($this->socket, $payload, 2);
+        $this->timeSincePingRequest = time();
+        $this->logger->debug('PING sent');
+        return true;
+    }
 
-        $this->logger->info('PING sent');
+    /**
+     * Checks whether it is already time to send out a PINGREQ to the server
+     *
+     * The MQTT protocol needs in many cases to continuously send pings, in order to know whether a client is still
+     * active or not.
+     * The interval at which this occurs is set at connect time, and in this class determined by the variable
+     * $this->keepAlive.
+     *
+     * Therefore, we must send a ping every $this->keepAlive seconds, which will happen automatically within the
+     * $this->eventLoop() function.
+     *
+     * The cases for which the MQTT broker WILL know we are still alive are:
+     * CONNECT, CONNACK, PUBLISH, PUBACK, PUBREC, PUBREL, PUBCOMP, SUBSCRIBE, SUBACK, UNSUBSCRIBE, UNSUBACK, PINGREQ,
+     * PINGRESP and DISCONNECT
+     * In all other cases, we must send PINGREQs.
+     *
+     * @see keepAlive
+     * @see
+     *
+     * @return bool
+     */
+    private function checkPing()
+    {
+        if ($this->keepAlive !== 0 && $this->timeSincePingRequest <= (time() - $this->keepAlive)) {
+            $this->logger->debug('Time to send ping signal', [
+                'timeSincePingRequest' => date('r', $this->timeSincePingRequest),
+                'timeSincePingResponse' => date('r', $this->timeSinceKeepAliveResponse),
+                'keepAlive' => $this->keepAlive,
+                'beforeCheck' => date('r', time() - $this->keepAlive),
+            ]);
+
+            $this->sendPing();
+        }
+
+        return true;
+    }
+
+    /**
+     * Sets the Keep Alive flag
+     *
+     * TimeSincePingRequest can be safely overwritten as the server will handle the KeepAlive response time
+     */
+    private function setLastControlPacketTime()
+    {
+        $this->timeSinceKeepAliveResponse = time();
+        return $this;
     }
 
     /**
@@ -782,5 +850,6 @@ class Client
         fwrite($this->socket, $payload, 2);
 
         $this->logger->info('DISCONNECT sent');
+        $this->setLastControlPacketTime();
     }
 }

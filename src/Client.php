@@ -382,7 +382,7 @@ class Client
      */
     public function setKeepAlive($keepAlive)
     {
-        if (!is_int($keepAlive) || $this->keepAlive < 0 || $this->keepAlive > (15 + (12 * 60) + (18 * 60 * 60))) {
+        if (!is_int($keepAlive) || $keepAlive < 0 || $keepAlive > (15 + (12 * 60) + (18 * 60 * 60))) {
             throw new \InvalidArgumentException('Invalid keepAlive argument');
         }
 

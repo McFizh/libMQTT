@@ -36,4 +36,10 @@ class ClientGeneralFunctionalityTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->client->setKeepAlive($value);
     }
+
+    public function testValidKeepAliveData()
+    {
+        $client = $this->client->setKeepAlive(60);
+        $this->assertInstanceOf(Client::class, $client);
+    }
 }

@@ -11,6 +11,7 @@ $logger->pushHandler(new StreamHandler('php://stdout', Logger::DEBUG));
 
 try {
     $client = new Client('192.168.33.11', 1883, 'readClientID', $logger);
+    #$client->setKeepAlive(5);
     $client->connect();
     $client->subscribe([
         'temperatures/#' =>  ['qos' => 0, 'function' => 'handleReceivedMessages'],

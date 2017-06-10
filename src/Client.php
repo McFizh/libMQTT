@@ -365,8 +365,14 @@ class Client
     }
 
     /**
+     * Sets the actual Keep Alive value.
+     *
      * The actual value of the Keep Alive is application specific; typically this is a few minutes. The maximum value is
      * 18 hours 12 minutes and 15 seconds.
+     *
+     * @TODO Please note that a keepAlive period of 1 second will give many possible false-positive disconnects
+     * This class stores the keep alive data internally in seconds and not milliseconds, which will give the false
+     * positives.
      *
      * @see http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Toc398718030
      *
@@ -443,7 +449,7 @@ class Client
         }
 
         // We MUST disconnect if no ping response has been received at 1.5 times the last keepAlive time
-        if ($this->keepAlive !== 0 && $this->timeSinceKeepAliveResponse < (time() - ($this->keepAlive * 1.5))) {
+        if ($this->keepAlive !== 0 && $this->timeSinceKeepAliveResponse < (time() - round($this->keepAlive * 1.5))) {
             stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
             $this->socket = null;
             $this->logger->debug('Not seen a package in a while, disconnecting...', [
@@ -601,7 +607,7 @@ class Client
         $this->setLastControlPacketTime();
 
         // If message QoS = 1 , add message to queue
-        if ($qos == 1) {
+        if ($qos === 1) {
             $this->msgQueue[$this->packet] = [
                 'topic' => $topic,
                 'message' => $message,

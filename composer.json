@@ -2,7 +2,7 @@
     "name": "mcfish/libmqtt",
     "description": "MQTT 3.1.1 library for PHP with TLS support",
     "keywords": [ "mqtt", "php" ],
-    "version": "0.3.0",
+    "version": "1.0.0",
     "license": "MIT",
     "authors": [
         {
@@ -11,10 +11,11 @@
         }
     ],
     "autoload": {
-    	"psr-4": { "LibMQTT\\":"src" }
+        "psr-4": {
+            "LibMQTT\\":"src"
+        }
     },
-    "minimum-stability": "alpha",
+    "minimum-stability": "stable",
     "require": {
-
     }
 }

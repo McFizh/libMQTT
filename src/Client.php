@@ -4,7 +4,7 @@
  *
  * @author Pekka Harjamäki <mcfizh@gmail.com>
  * @license MIT
- * @version 0.3.0
+ * @version 1.0.0
  */
 
 namespace LibMQTT;

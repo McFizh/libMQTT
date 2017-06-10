@@ -12,4 +12,4 @@ Library works with:
 * HHVM >= 3.9
 
 * * *
-Pekka Harjamäki < mcfizh@gmail.com >
+Pekka HarjamÃ¤ki < mcfizh@gmail.com >

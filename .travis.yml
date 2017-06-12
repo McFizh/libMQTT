@@ -19,7 +19,7 @@ install:
   - sudo rabbitmq-plugins enable rabbitmq_mqtt
   - sudo rabbitmqctl add_user testuser userpass
   - sudo rabbitmqctl set_permissions testuser ".*" ".*" ".*"
-  - sudo ./tests/travis.sh init1
+  - ./tests/travis.sh init1
 
 before_script:
   - composer self-update && composer install

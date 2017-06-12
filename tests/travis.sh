@@ -5,13 +5,13 @@ PHPTEST=`php -v | grep -E "(5\.4\.|5\.5\.)" && true || true`
 
 if [ "$1" == "init1" ]; then
   
- service rabbitmq-server stop
+ sudo service rabbitmq-server stop
 
  cd tests
- cp server.key server.crt ca.pem /etc/rabbitmq/
- cp rabbitmq.1.config /etc/rabbitmq/rabbitmq.config
+ sudo cp server.key server.crt ca.pem /etc/rabbitmq/
+ sudo cp rabbitmq.1.config /etc/rabbitmq/rabbitmq.config
 
- service rabbitmq-server start
+ sudo service rabbitmq-server start
 
 elif [ "$1" == "install" ]; then
 

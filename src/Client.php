@@ -577,10 +577,10 @@ class Client {
 		$found = false;
 		foreach($this->topics as $topic=>$data) {
 
-			$t_topic = str_replace("+","[^/]*", $topic);
-			$t_topic = str_replace("/","\/",$t_topic);
+			$t_topic = str_replace("/","\/",$topic);
 			$t_topic = str_replace("$","\$",$t_topic);
 			$t_topic = str_replace("#",".*",$t_topic);
+			$t_topic = str_replace("+","[^/]*", $t_topic);
 
 			if(!preg_match("/^".$t_topic."$/", $msg_topic))
 				continue;

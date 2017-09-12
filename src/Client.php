@@ -98,7 +98,7 @@ class Client {
 			return;
 		}
 
-		// 
+		//
 		$this->serverAddress = $address;
 		$this->serverPort = $port;
 		$this->clientID = $clientID;
@@ -120,7 +120,7 @@ class Client {
 	 * @return boolean Returns false if connection failed
 	 */
 	function connect($clean = true) {
-		
+
 		// Don't do anything, if server address is not set
 		if(!$this->serverAddress)
 			return false;
@@ -292,7 +292,7 @@ class Client {
 		$this->authPass = $password;
 	}
 
-	/** 
+	/**
 	 * Enables TLS connection and sets crypto protocol
 	 * Valid values: ssl, tls, tlsv1.0, tlsv1.1, tlsv1.2, sslv3
 	 * See this page for more info on values: http://php.net/manual/en/migration56.openssl.php
@@ -376,12 +376,12 @@ class Client {
 	 * @return boolean Did subscribe work or not?
 	 */
 	function subscribe($topics) {
-		
+
 		$cnt = 2;
 
 		// Create payload starting with packet ID
 		$payload = chr($this->packet >> 8) . chr($this->packet & 0xff);
-		
+
 		// If for some reason topic is provided as string, convert it to array
 		// If $topics is neither array nor string, refuse to continue
 		if( !is_array($topics) && is_string($topics) )
@@ -434,16 +434,16 @@ class Client {
 			$this->debugMessage("SUBACK packet received for wrong message");
 			return false;
 		}
-		
+
 		// FIXME: Process the rest of the SUBACK payload
 
-		// 
+		//
 		$this->packet++;
 		return true;
 	}
 
 	/**
-	 * Closes connection to server by first sending DISCONNECT packet, and 
+	 * Closes connection to server by first sending DISCONNECT packet, and
 	 * then closing the stream socket
 	 */
 	function close() {
@@ -511,7 +511,7 @@ class Client {
 		//
 		fwrite($this->socket, $header, strlen($header));
 		fwrite($this->socket, $payload, $bytes);
-		
+
 		// If message QoS = 1 , add message to queue
 		if($qos==1) {
 			$this->messageQueue[ $this->packet ] = [
@@ -580,7 +580,7 @@ class Client {
 			$t_topic = str_replace("/","\/",$topic);
 			$t_topic = str_replace("$","\$",$t_topic);
 			$t_topic = str_replace("#",".*",$t_topic);
-			$t_topic = str_replace("+","[^/]*", $t_topic);
+            $t_topic = str_replace("+","[^\/]*", $t_topic);
 
 			if(!preg_match("/^".$t_topic."$/", $msg_topic))
 				continue;
@@ -596,7 +596,7 @@ class Client {
 			}
 		}
 
-		// 
+		//
 		if(!$found)
 			$this->debugMessage("Package received, but it doesn't match subscriptions");
 

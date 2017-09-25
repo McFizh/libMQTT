@@ -376,7 +376,14 @@ class Client {
 	 * @return boolean Did subscribe work or not?
 	 */
 	function subscribe($topics) {
-		
+
+        // This will fail, if socket is not connected
+		if(!$this->socket) {
+			$this->debugMessage("Subscribe failed, because socket is not connected");
+			return false;
+        }
+
+        //
 		$cnt = 2;
 
 		// Create payload starting with packet ID
@@ -676,9 +683,11 @@ class Client {
 	 * @param boolean $noBuffer If true, use only direct fread
 	 */
 	private function readBytes($bytes, $noBuffer) {
+		if(!$this->socket)
+			return "";
+
 		if($noBuffer)
 			return fread($this->socket, $bytes);
-
 
 		$bytes_left = $bytes;
 		$retval = "";

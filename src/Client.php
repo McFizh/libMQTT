@@ -301,7 +301,7 @@ class Client {
 	 */
 	function setCryptoProtocol($protocol)
 	{
-		if(!in_array($protocol, ["ssl","tls","tlsv1.0","tlsv1.1","tlsv1.2","sslv3"]))
+		if(!in_array($protocol, ["ssl","tls","tlsv1.1","tlsv1.2"]))
 			return;
 		$this->connMethod = $protocol;
 	}

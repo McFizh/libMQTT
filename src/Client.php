@@ -47,6 +47,9 @@ class Client {
 	/** @var string $caFile			CA file for server authentication */
 	private $caFile;
 
+	/** @var bool $verifyPeerName		Verify Certificate peer name */
+    	private $verifyPeerName;	
+	
 	/** @var string $clientCrt		Certificate file for client authentication */
 	private $clientCrt;
 
@@ -84,6 +87,7 @@ class Client {
 		$this->packet = 1;
 		$this->topics = [];
 		$this->messageQueue = [];
+		$this->verifyPeerName = true;
 
 		// Basic validation of clientid
 		if( preg_match("/[^0-9a-zA-Z]/",$clientID) )
@@ -129,7 +133,7 @@ class Client {
 		if($this->connMethod!="tcp")
 		{
 			$socketContextOptions = [ "ssl" => [] ];
-			$socketContextOptions["ssl"]["verify_peer_name"]=true;
+			$socketContextOptions["ssl"]["verify_peer_name"] = true;
 
 			if($this->caFile)
 				$socketContextOptions["ssl"]["cafile"]=$this->caFile;
@@ -140,6 +144,10 @@ class Client {
 			if ($this->clientCrt && $this->clientKey)
 				$socketContextOptions["ssl"]["local_pk"]=$this->clientKey;
 
+            		if (!$this->verifyPeerName) {
+                		$socketContextOptions["ssl"]["verify_peer_name"] = false;
+            		}			
+			
 			$socketContext = stream_context_create($socketContextOptions);
 			$host = $this->connMethod . "://" . $this->serverAddress . ":" . $this->serverPort;
 

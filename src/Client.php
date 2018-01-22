@@ -133,7 +133,7 @@ class Client {
 		if($this->connMethod!="tcp")
 		{
 			$socketContextOptions = [ "ssl" => [] ];
-			$socketContextOptions["ssl"]["verify_peer_name"] = true;
+			$socketContextOptions["ssl"]["verify_peer_name"] = $this->verifyPeerName;
 
 			if($this->caFile)
 				$socketContextOptions["ssl"]["cafile"]=$this->caFile;
@@ -142,11 +142,7 @@ class Client {
 				$socketContextOptions["ssl"]["local_cert"]=$this->clientCrt;
 
 			if ($this->clientCrt && $this->clientKey)
-				$socketContextOptions["ssl"]["local_pk"]=$this->clientKey;
-
-            		if (!$this->verifyPeerName) {
-                		$socketContextOptions["ssl"]["verify_peer_name"] = false;
-            		}			
+				$socketContextOptions["ssl"]["local_pk"]=$this->clientKey;			
 			
 			$socketContext = stream_context_create($socketContextOptions);
 			$host = $this->connMethod . "://" . $this->serverAddress . ":" . $this->serverPort;

@@ -15,6 +15,8 @@ if [ "$1" == "init1" ]; then
 
 elif [ "$1" == "install" ]; then
 
+  curl -OL https://squizlabs.github.io/PHP_CodeSniffer/phpcs.phar
+
   if [ "$PHPTEST" != "" ]; then
     wget https://phar.phpunit.de/phpunit-4.8.phar
     mv phpunit-4.8.phar phpunit.phar
@@ -24,6 +26,7 @@ elif [ "$1" == "install" ]; then
   fi
 
   chmod u+x phpunit.phar
+  chmod u+x phpcs.phar
 
 else
 

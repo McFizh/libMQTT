@@ -173,7 +173,7 @@ class Client {
         stream_set_timeout($this->socket, 10);
         stream_set_blocking($this->socket, false);
 
-        $i = 0;
+        $bytes = 0;
         $buffer = "";
 
         // ------------------------------------
@@ -202,32 +202,39 @@ class Client {
         // ------------------------------------
         // Create CONNECT packet (for MQTT 3.1.1 protocol)
 
-        $buffer .= $this->convertString("MQTT", $i);
+        $buffer .= $this->convertString("MQTT", $bytes);
 
-        $buffer .= chr(0x04); $i++;                     // Protocol level
-        $buffer .= chr($var); $i++;                     // Connect flags
-        $buffer .= chr($this->keepAlive >> 8); $i++;    // Keepalive (MSB)
-        $buffer .= chr($this->keepAlive & 0xff); $i++;  // Keepalive (LSB)
+        $buffer .= chr(0x04);   // Protocol level
+        $bytes++;
 
-        $buffer .= $this->convertString($this->clientID,$i);
+        $buffer .= chr($var);   // Connect flags
+        $bytes++;
+
+        $buffer .= chr($this->keepAlive >> 8);  // Keepalive (MSB)
+        $bytes++;
+
+        $buffer .= chr($this->keepAlive & 0xff);    // Keepalive (LSB)
+        $bytes++;
+
+        $buffer .= $this->convertString($this->clientID,$bytes);
 
         //Adding will to payload
         /*
         if($this->will != NULL){
-            $buffer .= $this->strwritestring($this->will['topic'],$i);
-            $buffer .= $this->strwritestring($this->will['content'],$i);
+            $buffer .= $this->strwritestring($this->will['topic'],$bytes);
+            $buffer .= $this->strwritestring($this->will['content'],$bytes);
         }
         */
 
         if($this->authUser) {
-            $buffer .= $this->convertString($this->authUser,$i);
+            $buffer .= $this->convertString($this->authUser,$bytes);
         }
 
         if($this->authPass) {
-            $buffer .= $this->convertString($this->authPass,$i);
+            $buffer .= $this->convertString($this->authPass,$bytes);
         }
 
-        $header = chr(0x10).chr($i);
+        $header = $this->createHeader( 0x10 , $bytes );
         fwrite($this->socket, $header, 2);
         fwrite($this->socket, $buffer);
 
@@ -492,7 +499,8 @@ class Client {
     /**
      * Gets queue of qos 1 messages that haven't been acknowledged by server
      */
-    function getMessageQueue() {
+    function getMessageQueue()
+    {
         return $this->messageQueue;
     }
 
@@ -506,7 +514,8 @@ class Client {
      *
      * @return boolean Did publish work or not
      */
-    function publish($topic, $message, $qos, $retain = 0) {
+    function publish($topic, $message, $qos, $retain = 0)
+    {
         // Do nothing, if socket isn't connected
         if(!$this->socket) {
             return false;

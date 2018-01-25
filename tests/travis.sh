@@ -4,6 +4,10 @@ set -e
 PHPTEST=`php -v | grep -E "(5\.4\.|5\.5\.)" && true || true`
 CONFIGPATH=`sudo rabbitmqctl eval '{ok, [Paths]} = init:get_argument(config), hd(Paths).' | head -n1 | sed -e 's/\"//g'`
 
+echo "---------"
+echo `sudo rabbitmqctl eval '{ok, [Paths]} = init:get_argument(config), hd(Paths).'`
+echo "---:::---"
+
 if [ "$1" == "init1" ]; then
   
  sudo service rabbitmq-server stop

@@ -4,7 +4,7 @@
  *
  * @author Pekka Harjamäki <mcfizh@gmail.com>
  * @license MIT
- * @version 1.0.1
+ * @version 1.0.2
  */
 
 namespace LibMQTT;
@@ -235,13 +235,13 @@ class Client {
         }
 
         $header = $this->createHeader( 0x10 , $bytes );
-        fwrite($this->socket, $header, 2);
+        fwrite($this->socket, $header, strlen($header));
         fwrite($this->socket, $buffer);
 
         // Wait for CONNACK packet
         $string = $this->readBytes(4, false);
         if(strlen($string)!=4) {
-            $this->debugMessage("Connection failed! Server gave unexpected response.");
+            $this->debugMessage("Connection failed! Server gave unexpected response (".strlen($string)." bytes).");
             return false;
         }
 

@@ -13,13 +13,10 @@ Environment is based on Centos 7, and contains PHP 5.6 + RabbitMQ + composer. To
 
 * vagrant up
 * vagrant ssh
-* git clone https://github.com/McFizh/libMQTT.git
-* cd libMQTT ; composer.phar install
+* cd libMQTT
 
 Now to run the actual PHP unit tests:
 
-* ./tests/travis.sh init1
-* ./tests/travis.sh install
 * ./tests/travis.sh
 
 ## PHP requirements
@@ -29,4 +26,4 @@ Library works with:
 * HHVM >= 3.9
 
 * * *
-Pekka Harjamäki < mcfizh@gmail.com >
+Pekka HarjamÃ¤ki < mcfizh@gmailcom >

@@ -2,7 +2,18 @@
 set -e
 
 PHPTEST=`php -v | grep -E "(5\.4\.|5\.5\.)" && true || true`
-CONFIGPATH=`sudo rabbitmqctl eval '{ok, [Paths]} = init:get_argument(config), hd(Paths).' | head -n1 | sed -e 's/\"//g'`
+
+# Try to figure out config path
+if [ -z "$TRAVIS" ]; then
+  CONFIGPATH="/etc/rabbitmq/rabbitmq.config"
+else
+  sudo rabbitmqctl eval '{ok, [Paths]} = init:get_argument(config), hd(Paths).' > /dev/null 2>&1
+  if [ $? -eq 0 ]; then
+    CONFIGPATH=`sudo rabbitmqctl eval '{ok, [Paths]} = init:get_argument(config), hd(Paths).' | head -n1 | sed -e 's/\"//g'`
+  else
+    CONFIGPATH="/etc/rabbitmq/rabbitmq.config"
+  fi
+fi
 
 if [ "$1" == "init1" ]; then
   

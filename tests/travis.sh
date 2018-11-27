@@ -6,12 +6,18 @@ PHPTEST=`php -v | grep -E "(5\.4\.|5\.5\.)" && true || true`
 # Try to figure out config path
 if [ -z "$TRAVIS" ]; then
   CONFIGPATH="/etc/rabbitmq/rabbitmq.config"
+  echo -n "Configpath (fixed, not travis): "
+  echo $CONFIGPATH
 else
   sudo rabbitmqctl eval '{ok, [Paths]} = init:get_argument(config), hd(Paths).' > /dev/null 2>&1
   if [ $? -eq 0 ]; then
     CONFIGPATH=`sudo rabbitmqctl eval '{ok, [Paths]} = init:get_argument(config), hd(Paths).' | head -n1 | sed -e 's/\"//g'`
+    echo -n "Configpath (guessed, travis): "
+    echo $CONFIGPATH
   else
     CONFIGPATH="/etc/rabbitmq/rabbitmq.config"
+    echo -n "Configpath (fixed, travis): "
+    echo $CONFIGPATH
   fi
 fi
 

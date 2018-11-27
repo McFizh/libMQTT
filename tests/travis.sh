@@ -1,15 +1,20 @@
 #!/bin/bash
 set -e
 
+echo "Testing php version.."
 PHPTEST=`php -v | grep -E "(5\.4\.|5\.5\.)" && true || true`
 
 # Try to figure out config path
+echo "Trying to figure out path"
 if [ -z "$TRAVIS" ]; then
   CONFIGPATH="/etc/rabbitmq/rabbitmq.config"
   echo -n "Configpath (fixed, not travis): "
   echo $CONFIGPATH
 else
+  echo "Running rctl command"
   sudo rabbitmqctl eval '{ok, [Paths]} = init:get_argument(config), hd(Paths).' > /dev/null 2>&1
+
+  echo ".. done"
   if [ $? -eq 0 ]; then
     CONFIGPATH=`sudo rabbitmqctl eval '{ok, [Paths]} = init:get_argument(config), hd(Paths).' | head -n1 | sed -e 's/\"//g'`
     echo -n "Configpath (guessed, travis): "
@@ -21,6 +26,7 @@ else
   fi
 fi
 
+echo "Branching to command"
 if [ "$1" == "init1" ]; then
   
  sudo service rabbitmq-server stop

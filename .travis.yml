@@ -3,9 +3,8 @@ language: php
 services:
   - rabbitmq
 
-sudo: required
-dist: trusty
-group: edge
+sudo: enabled
+dist: xenial
 
 php:
   - '5.4'

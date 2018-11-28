@@ -4,7 +4,7 @@ services:
   - rabbitmq
 
 sudo: enabled
-dist: xenial
+dist: trusty
 
 php:
   - '5.4'

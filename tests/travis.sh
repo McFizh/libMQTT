@@ -13,6 +13,9 @@ else
   sudo rabbitmqctl eval '{ok, [Paths]} = init:get_argument(config), hd(Paths).' > /dev/null 2>&1
   set -e
 
+  echo -n "Return value: "
+  echo $?
+
   if [ $? -eq 0 ]; then
     CONFIGPATH=`sudo rabbitmqctl eval '{ok, [Paths]} = init:get_argument(config), hd(Paths).' | head -n1 | sed -e 's/\"//g'`
     echo -n "Configpath (guessed, travis): "

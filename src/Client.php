@@ -4,7 +4,7 @@
  *
  * @author Pekka Harjamäki <mcfizh@gmail.com>
  * @license MIT
- * @version 1.0.2
+ * @version 1.0.3
  */
 
 namespace LibMQTT;
@@ -312,8 +312,10 @@ class Client {
 
     /**
      * Enables TLS connection and sets crypto protocol
-     * Valid values: ssl, tls, tlsv1.0, tlsv1.1, tlsv1.2, sslv3
+     * Valid values: ssl, tls, tlsv1.0, tlsv1.1, tlsv1.2
+     *
      * See this page for more info on values: http://php.net/manual/en/migration56.openssl.php
+     * and also this page: https://wiki.php.net/rfc/improved-tls-constants
      *
      * @param string $protocol Set encryption protocol
      */
@@ -342,12 +344,26 @@ class Client {
             return;
         }
 
-        //
+        // See if there's data waiting?
         $byte = $this->readBytes(1, true);
         if(strlen($byte) > 0) {
             $cmd = ord($byte);
-            $bytes = ord($this->readBytes(1,true));
 
+            // Read the length of packet..
+            $bytes=0;
+            $multiplier=1;
+
+            do {
+                $t_byte = ord($this->readBytes(1,true));
+                $bytes+=($t_byte & 127)*$multiplier;
+                $multiplier*=128;
+
+                if($multiplier>128*128*128) {
+                    break;
+                }
+            } while( ($t_byte&128) != 0);
+
+            //
             $payload = "";
             if($bytes>0)
                 $payload = $this->readBytes($bytes, false);
@@ -362,7 +378,7 @@ class Client {
                     $this->processMessage( $payload, $msg_qos );
                     break;
 
-                case 0x40:  // PUBACK
+                case 0x40:      // PUBACK
                     $msg_qos = ( $cmd & 0x06 ) >> 1; // QoS = bits 1 & 2
                     $this->processPubAck( $payload, $msg_qos );
                     break;
@@ -518,11 +534,13 @@ class Client {
     {
         // Do nothing, if socket isn't connected
         if(!$this->socket) {
+            $this->debugMessage("Packet NOT sent, socket not connected! (QoS: ".$qos." ; topic: ".$topic." ; msg: ".$message.")",2);
             return false;
         }
 
         // Sanity checks for QoS and retain values
         if( ( $qos != 0 && $qos != 1 ) || ($retain != 0 && $retain != 1 ) ) {
+            $this->debugMessage("Packet NOT sent, invalid qos/retain value (QoS: ".$qos." ; topic: ".$topic." ; msg: ".$message.")",2);
             return false;
         }
 
@@ -556,6 +574,9 @@ class Client {
                 "attempt" => 1
             ];
         }
+
+        //
+        $this->debugMessage("Packet sent (QoS: ".$qos." ; topic: ".$topic." ; bytes: ".$bytes." ; msg: ".$message.")",2);
 
         //
         $this->packet++;

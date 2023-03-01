@@ -245,11 +245,11 @@ class Client {
             return false;
         }
 
-        if(ord($string{0}) == 0x20 && $string{3} == chr(0)) {
+        if(ord($string[0]) == 0x20 && $string[3] == chr(0)) {
             $this->debugMessage("Connected to MQTT");
         } else {
             $msg = sprintf("Connection failed! Error: 0x%02x 0x%02x",
-                ord($string{0}),ord($string{3}) );
+                ord($string[0]),ord($string[3]) );
             $this->debugMessage($msg);
             return false;
         }
@@ -459,20 +459,20 @@ class Client {
 
         // Wait for SUBACK packet
         $resp_head = $this->readBytes(2, false);
-        if( strlen($resp_head) != 2 || ord($resp_head{0}) != 0x90 ) {
+        if( strlen($resp_head) != 2 || ord($resp_head[0]) != 0x90 ) {
             $this->debugMessage("Invalid SUBACK packet received (stage 1)");
             return false;
         }
 
         // Read remainder of the response
-        $bytes = ord($resp_head{1});
+        $bytes = ord($resp_head[1]);
         $resp_body = $this->readBytes($bytes, false);
         if( strlen($resp_body) < 2 ) {
             $this->debugMessage("Invalid SUBACK packet received (stage 2)");
             return false;
         }
 
-        $package_id = ( ord($resp_body{0}) << 8 ) + ord($resp_body{1});
+        $package_id = ( ord($resp_body[0]) << 8 ) + ord($resp_body[1]);
         if( $this->packet != $package_id ) {
             $this->debugMessage("SUBACK packet received for wrong message");
             return false;
@@ -596,7 +596,7 @@ class Client {
             return false;
         }
 
-        $package_id = ( ord($payload{0}) << 8 ) + ord($payload{1});
+        $package_id = ( ord($payload[0]) << 8 ) + ord($payload[1]);
         if( !isset($this->messageQueue[$package_id]) ) {
             $this->debugMessage("Received PUBACK for package we didn't sent?");
             return false;
@@ -614,7 +614,7 @@ class Client {
     private function processMessage($msg, $qos)
     {
         // Package starts with topic
-        $tlen = (ord($msg{0})<<8) + ord($msg{1});
+        $tlen = (ord($msg[0])<<8) + ord($msg[1]);
         $msg_topic = substr($msg,2,$tlen);
 
         // QoS 1 and 2 packets also contain identifier

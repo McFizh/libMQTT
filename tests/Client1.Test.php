@@ -2,7 +2,7 @@
 use PHPUnit\Framework\TestCase;
 use McFish\LibMQTT\Client;
 
-class ClientTest1 extends TestCase {
+class Client1 extends TestCase {
 
 	public function testUnencryptedClientCreation() {
 

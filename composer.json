@@ -16,7 +16,7 @@
         }
     },
     "scripts": {
-        "test": "phpunit tests/ClientTest*.php"
+        "test": "phpunit"
     },
     "minimum-stability": "stable",
     "require-dev": {

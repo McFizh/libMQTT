@@ -2,7 +2,7 @@
 use PHPUnit\Framework\TestCase;
 use McFish\LibMQTT\Client;
 
-class ClientTest2 extends TestCase {
+class Client2 extends TestCase {
 
     private $message1Received = false,
             $message2Received = false,

@@ -1,5 +1,6 @@
 <?PHP
 use PHPUnit\Framework\TestCase;
+use McFish\LibMQTT\Client;
 
 class ClientTest2 extends TestCase {
 
@@ -12,7 +13,7 @@ class ClientTest2 extends TestCase {
     public function testUnencryptedAuthorizedLengthyClientCreation()
     {
         // Try to establish connection to server
-        $client = new LibMQTT\Client("localhost",1883,"phpUnitClientWithMaxLen");
+        $client = new Client("localhost",1883,"phpUnitClientWithMaxLen");
         $client->setAuthDetails("somereallyweirdandlongusernametotestoutconnectpacetsizeproblem", "withsomeaccompanyinglongcatpasswordthatnoonewoulduseasitmighteventincludetypos");
 
         $result = $client->connect();
@@ -26,7 +27,7 @@ class ClientTest2 extends TestCase {
     {
 
         // Try to establish connection to server
-        $client = new LibMQTT\Client("localhost",1883,"phpUnitClient");
+        $client = new Client("localhost",1883,"phpUnitClient");
         $client->setAuthDetails("testuser", "userpass");
 
         $result = $client->connect();

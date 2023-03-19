@@ -1,10 +1,8 @@
 <?PHP
-
-// File created by: composer dump-autoload -o
-require "../vendor/autoload.php";
+use McFish\LibMQTT\Client;
 
 // Create new MQTT client
-$client = new LibMQTT\Client("serverName",1883,"ThisIsYourUniqueClientID");
+$client = new Client("serverName",1883,"ThisIsYourUniqueClientID");
 
 // Should you need authentication, you can set them here
 #$client->setAuthDetails("username", "userpass");

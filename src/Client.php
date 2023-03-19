@@ -4,10 +4,10 @@
  *
  * @author Pekka Harjamäki <mcfizh@gmail.com>
  * @license MIT
- * @version 1.0.3
+ * @version 2.0.0
  */
 
-namespace LibMQTT;
+namespace McFish\LibMQTT;
 
 /**
  * Client class for MQTT

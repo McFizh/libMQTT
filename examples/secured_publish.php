@@ -1,10 +1,8 @@
 <?PHP
-
-// File created by: composer dump-autoload -o
-require "../vendor/autoload.php";
+use McFish\LibMQTT\Client;
 
 // Try to establish connection to server
-$client = new LibMQTT\Client("serverName",8883,"ThisIsYourUniqueClientID");
+$client = new Client("serverName",8883,"ThisIsYourUniqueClientID");
 
 // Set connection protocol ("tls" = all tls versions)
 $client->setCryptoProtocol("tls");

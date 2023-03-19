@@ -1,12 +1,14 @@
 <?PHP
 use PHPUnit\Framework\TestCase;
+use McFish\LibMQTT\Client;
 
 class ClientTest1 extends TestCase {
 
 	public function testUnencryptedClientCreation() {
 
 		// Try to establish connection to server
-		$client = new LibMQTT\Client("localhost",1883,"phpUnitClient");
+		$client = new Client("localhost",1883,"phpUnitClient");
+		$client->setAuthDetails("testuser", "userpass");
 
 		//
 		$result = $client->connect();
@@ -25,13 +27,12 @@ class ClientTest1 extends TestCase {
 
 		//
 		$client->close();
-
 	}
 
 	public function testCryptedClientCreation() {
 
 		// Try to establish connection to server
-		$client = new LibMQTT\Client("test.mosquitto.org",8883,"phpUnitClient");
+		$client = new Client("test.mosquitto.org",8883,"phpUnitClient");
 		$client->setCryptoProtocol("tls");
 		$client->setCAFile("tests/mosquitto.org.crt");
 
@@ -54,5 +55,4 @@ class ClientTest1 extends TestCase {
 		$client->close();
 
 	}
-
 }

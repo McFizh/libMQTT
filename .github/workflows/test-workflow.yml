@@ -7,6 +7,8 @@ jobs:
     services:
       rabbitmq:
         image: rabbitmq:3.11-management
+        ports:
+          - 1883:1883
     steps:
       - uses: actions/checkout@v3
       - uses: php-actions/composer@v6

@@ -311,17 +311,17 @@ class Client {
     }
 
     /**
-     * Enables TLS connection and sets crypto protocol
-     * Valid values: ssl, tls, tlsv1.0, tlsv1.1, tlsv1.2
+     * Sets transport protocol and enables encrypted connection
+     * Valid values: ssl, tls, tlsv1.0, tlsv1.1, tlsv1.2, tlsv1.3
      *
      * See this page for more info on values: http://php.net/manual/en/migration56.openssl.php
      * and also this page: https://wiki.php.net/rfc/improved-tls-constants
      *
-     * @param string $protocol Set encryption protocol
+     * @param string $protocol Set transport protocol
      */
-    function setCryptoProtocol($protocol)
+    function setTransportProtocol($protocol)
     {
-        if(!in_array($protocol, ["ssl","tls","tlsv1.1","tlsv1.2"])) {
+        if(!in_array($protocol, ["ssl","tls","tlsv1.1","tlsv1.2","tlsv1.3"])) {
             return;
         }
         $this->connMethod = $protocol;

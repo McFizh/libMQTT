@@ -25,7 +25,6 @@ class Client2 extends TestCase {
 
     public function testUnencryptedAuthorizedClientCreation()
     {
-
         // Try to establish connection to server
         $client = new Client("localhost",1883,"phpUnitClient");
         $client->setAuthDetails("testuser", "userpass");
@@ -66,10 +65,12 @@ class Client2 extends TestCase {
         $result = $client->publish("libmqtt/test", $msg, 1);
         $this->assertTrue($result);
 
-        // Wait 7 x 40ms for server to send us the previous messages
-        for($l1=0; $l1<7; $l1++) {
-            usleep(40000);
+        // Wait 15 x 50ms for server to send us the previous messages
+        for($l1=0; $l1<15; $l1++) {
             $client->eventloop();
+            if( count( $client->getMessageQueue() ) == 0 )
+                break;
+            usleep(50000);
         }
 
         // By now, we should have received all messages back to us
@@ -83,7 +84,6 @@ class Client2 extends TestCase {
 
         //
         $client->close();
-
     }
 
     public function handleReceivedMessages($topic, $msg, $qos)
@@ -102,5 +102,4 @@ class Client2 extends TestCase {
         if(substr($msg,0,14) == "test message 5" && strlen($msg)>25000 && $qos==1)
             $this->message5Received = true;
     }
-
 }

@@ -6,3 +6,4 @@
 - Replaced vagrant with docker
 - Fixed namespace naming
 - Merged php 8 fix (curly access syntax) by fbrandle
+- Added TLS 1.3 as accepted transport type

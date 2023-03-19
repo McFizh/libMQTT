@@ -1,0 +1,4 @@
+FROM rabbitmq:3.11-management
+RUN rabbitmq-plugins enable --offline rabbitmq_mqtt
+COPY definitions.json /etc/rabbitmq
+COPY rabbitmq.conf /etc/rabbitmq

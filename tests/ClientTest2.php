@@ -1,6 +1,7 @@
 <?PHP
+use PHPUnit\Framework\TestCase;
 
-class ClientTest2 extends PHPUnit_Framework_TestCase {
+class ClientTest2 extends TestCase {
 
     private $message1Received = false,
             $message2Received = false,
@@ -32,7 +33,7 @@ class ClientTest2 extends PHPUnit_Framework_TestCase {
         $this->assertTrue($result);
 
         // Subscribe to 'libmqtt/test' and 'libmqtt/empty' channels
-        $result = $client->subscribe( [ 
+        $result = $client->subscribe( [
             "libmqtt/test" => [ "qos" => 1 , "function" => [ $this, "handleReceivedMessages" ] ],
             "libmqtt/empty" => [ "qos" => 0 , "function" => [ $this, "handleReceivedMessages" ] ],
             "libmqtt/wcard/+" => [ "qos" => 0 , "function" => [ $this, "handleReceivedMessages" ] ]
@@ -84,7 +85,7 @@ class ClientTest2 extends PHPUnit_Framework_TestCase {
 
     }
 
-    public function handleReceivedMessages($topic, $msg, $qos) 
+    public function handleReceivedMessages($topic, $msg, $qos)
     {
         if( !in_array($topic, array("libmqtt/test","libmqtt/wcard/test","libmqtt/wcard/channel") ) )
             return;

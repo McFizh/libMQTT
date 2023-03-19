@@ -1,2 +1,2 @@
 docs/phpdoc-cache-*
-.vagrant
+.phpunit.result.cache

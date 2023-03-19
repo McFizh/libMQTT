@@ -1,0 +1,33 @@
+{
+  "vhosts": [
+    {
+      "name": "/"
+    }
+  ],
+  "users": [
+    {
+      "name": "testuser",
+      "password": "userpass",
+      "tags": ["administrator"]
+    }, {
+      "name": "somereallyweirdandlongusernametotestoutconnectpacetsizeproblem",
+      "password": "withsomeaccompanyinglongcatpasswordthatnoonewoulduseasitmighteventincludetypos",
+      "tags": ["administrator"]
+    }
+  ],
+  "permissions":[
+    {
+      "user":"testuser",
+      "vhost":"/",
+      "configure":".*",
+      "read":".*",
+      "write":".*"
+    }, {
+      "user":"somereallyweirdandlongusernametotestoutconnectpacetsizeproblem",
+      "vhost":"/",
+      "configure":".*",
+      "read":".*",
+      "write":".*"
+    }
+  ]
+}

@@ -16,7 +16,7 @@ Repo include docker-compose file, which creates minimal testing environment for 
 
 Library works with:
 
-- PHP >= 7.4
+- PHP >= 8.0
 
 ---
 

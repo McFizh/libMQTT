@@ -2,5 +2,5 @@
 
 - Replaced travis with github actions
 - Removed references to hhvm
+- Dropped support for PHP versions below 8.0
 - Replaced vagrant with docker
-- Dropped support for PHP versions below 7.4
